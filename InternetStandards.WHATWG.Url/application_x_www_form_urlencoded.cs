@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 
@@ -89,7 +90,7 @@ namespace InternetStandards.WHATWG.Url
             return output.ToString();
         }
 
-        public static string Serializer(IList<(string Name, string Value, string Type)> tuples,
+        public static string Serializer(ICollection<(string Name, object Value)> tuples,
             Encoding encodingOverride = null)
         {
             var encoding = Encoding.UTF8;
@@ -106,17 +107,9 @@ namespace InternetStandards.WHATWG.Url
                 var name = ByteSerializer(encoding.GetBytes(tuple.Name));
                 var value = tuple.Value;
 
-                switch (tuple.Type)
-                {
-                    case "hidden" when tuple.Name == "_charset":
-                        value = encoding.WebName;
-                        break;
-                    case "file":
-                        // set value to value’s filename
-                        break;
-                }
+                if (value is FileInfo file) value = file.Name;
 
-                value = ByteSerializer(encoding.GetBytes(value));
+                value = ByteSerializer(encoding.GetBytes((string)value));
 
                 if (!firstPair)
                     output.Append('&');
@@ -128,14 +121,6 @@ namespace InternetStandards.WHATWG.Url
                     firstPair = false;
             }
             return output.ToString();
-        }
-
-        public static string Serializer(IList<(string Name, string Value)> tuples,
-            Encoding encodingOverride = null)
-        {
-            return Serializer(tuples
-                .Select<(string Name, string Value), (string Name, string Value, string Type)>(tuple =>
-                    (tuple.Name, tuple.Value, null)).ToList());
         }
     }
 }
