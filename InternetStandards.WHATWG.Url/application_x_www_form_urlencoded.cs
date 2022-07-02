@@ -51,9 +51,18 @@ namespace InternetStandards.WHATWG.Url
 
         private static IEnumerable<IEnumerable<byte>> Split(IEnumerable<byte> input)
         {
-            var enumerator = input.GetEnumerator();
-            while (enumerator.MoveNext())
+            using var enumerator = input.GetEnumerator();
+        
+            if (!enumerator.MoveNext())
+            {
+                yield return Enumerable.Empty<byte>();
+                yield break;
+            }
+
+            do
+            {
                 yield return TakeUntilByte0x26(enumerator);
+            } while (enumerator.MoveNext());
         }
 
         private static IEnumerable<byte> TakeUntilByte0x26(IEnumerator<byte> input)
