@@ -11,38 +11,32 @@ namespace InternetStandards.WHATWG.Url
 
         public static IEnumerable<byte> PercentDecode(IEnumerable<byte> input)
         {
-            var twoByteBuffer = new byte[2];
+            var buffer = new Queue<byte>(2);
+            var bytes = new byte[2];
 
-            bool NotInRange()
+            using var enumerator = input.GetEnumerator();
+            while (buffer.Count > 0 || enumerator.MoveNext())
             {
-                return twoByteBuffer.All(b =>
-                    !(b >= 0x30 && b <= 0x39 || b >= 0x41 && b <= 0x46 || b >= 0x61 && b <= 0x66));
-            }
-
-            using (var enumerator = input.GetEnumerator())
-            {
-                while (enumerator.MoveNext())
+                var current = buffer.Count > 0 ? buffer.Dequeue() : enumerator.Current;
+                if (current != 0x25)
                 {
-                    if (enumerator.Current != 0x25)
-                        yield return enumerator.Current;
-
-                    int twoByteBufferLength;
-                    for (twoByteBufferLength = 0;
-                        twoByteBufferLength < 2 && enumerator.MoveNext();
-                        twoByteBufferLength++)
-                        twoByteBuffer[twoByteBufferLength] = enumerator.Current;
-
-                    if (twoByteBufferLength != 2 || NotInRange())
-                    {
-                        yield return 0x25;
-                        for (var index = 0; index < twoByteBufferLength; index++)
-                            yield return twoByteBuffer[index];
-                    }
-                    else
-                    {
-                        yield return Convert.ToByte(Encoding.UTF8.GetString(twoByteBuffer), 16);
-                    }
+                    yield return current;
+                    continue;
                 }
+
+                while (buffer.Count < 2 && enumerator.MoveNext())
+                    buffer.Enqueue(enumerator.Current);
+
+                if (buffer.Count != 2 || !buffer.All(@byte =>
+                        @byte is >= 0x30 and <= 0x39 or >= 0x41 and <= 0x46 or >= 0x61 and <= 0x66))
+                {
+                    yield return current;
+                    continue;
+                }
+
+                buffer.CopyTo(bytes, 0);
+                buffer.Clear();
+                yield return Convert.ToByte(Encoding.UTF8.GetString(bytes), 16);
             }
         }
 
