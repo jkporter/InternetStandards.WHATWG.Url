@@ -35,11 +35,38 @@ namespace InternetStandards.WHATWG.Url
                 }
 
                 buffer.CopyTo(bytes, 0);
-                buffer.Clear();
                 yield return Convert.ToByte(Encoding.UTF8.GetString(bytes), 16);
+                buffer.Clear();
             }
         }
 
         public static IEnumerable<byte> PercentDecode(string input) => PercentDecode(Encoding.UTF8.GetBytes(input));
+
+        public static string PercentEncodeAfterEncoding(Encoding encoding, string input, object percentEncodeSet,
+            bool spaceAsPlus = false)
+        {
+            var inputQueue = new Queue<byte>(encoding.GetBytes(input));
+            var output = new StringBuilder();
+
+            while (inputQueue.Count > 0)
+            {
+                var @byte = inputQueue.Dequeue();
+                switch (@byte)
+                {
+                    case 0x20 when spaceAsPlus:
+                        output.Append('+');
+                        break;
+                    case 0x2A or 0x2D or 0x2E or >= 0x30 and <= 0x39 or >= 0x41 and <= 0x5A or 0x5F
+                        or >= 0x61 and <= 0x7A:
+                        output.Append((char) @byte);
+                        break;
+                    default:
+                        output.Append(PercentEncode(@byte));
+                        break;
+                }
+            }
+
+            return output.ToString();
+        }
     }
 }
